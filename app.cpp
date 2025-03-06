@@ -1,4 +1,4 @@
-﻿#include "app.hpp"
+#include "app.hpp"
 
 bool App::vsync_on = true;
 
@@ -24,6 +24,7 @@ bool App::init() {
         std::cout << "Initialized...\n";
 
         glfwSetKeyCallback(window, key_callback);
+        glfwSetWindowUserPointer(window, this);
         glfwSetFramebufferSizeCallback(window, nullptr);
         glfwSetMouseButtonCallback(window, mouse_button_callback);
         glfwSetCursorPosCallback(window, cursor_position_callback);

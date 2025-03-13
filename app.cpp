@@ -1,9 +1,9 @@
-#include "app.hpp"
+﻿#include "app.hpp"
 
 bool App::vsync_on = true;
 
 
-App::App() : window(nullptr), shader_prog_ID(0), VBO_ID(0), VAO_ID(0), r(1.0f), g(0.0f), b(0.0f), a(1.0f) {
+App::App() : window(nullptr), shader(nullptr), model(nullptr) {
     std::cout << "Constructed...\n";
 }
 
@@ -25,51 +25,19 @@ bool App::init() {
 
         glfwSetKeyCallback(window, key_callback);
         glfwSetWindowUserPointer(window, this);
-        glfwSetFramebufferSizeCallback(window, nullptr);
-        glfwSetMouseButtonCallback(window, mouse_button_callback);
-        glfwSetCursorPosCallback(window, cursor_position_callback);
-        glfwSetScrollCallback(window, scroll_callback);
-
         glfwSwapInterval(vsync_on ? 1 : 0);
 
-        glGenVertexArrays(1, &VAO_ID);
-        glGenBuffers(1, &VBO_ID);
+        // ✨ Načti model z .OBJ souboru
+        shader = new ShaderProgram("shader.vert", "shader.frag");
+        std::ifstream testFile("triangle.obj");
+        if (!testFile) {
+            std::cerr << "Soubor triangle.obj nebyl nalezen!\n";
+        }
+        else {
+            std::cout << "Soubor triangle.obj nalezen.\n";
+        }
+        model = new Model("triangle.obj", shader);
 
-        glBindVertexArray(VAO_ID);
-        glBindBuffer(GL_ARRAY_BUFFER, VBO_ID);
-        glBufferData(GL_ARRAY_BUFFER, triangle_vertices.size() * sizeof(vertex), triangle_vertices.data(), GL_STATIC_DRAW);
-
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)0);
-        glEnableVertexAttribArray(0);
-
-        const char* vertex_shader_src = "#version 330 core\n"
-            "layout (location = 0) in vec3 aPos;\n"
-            "void main() {\n"
-            "gl_Position = vec4(aPos, 1.0);\n"
-            "}";
-
-        const char* fragment_shader_src = "#version 330 core\n"
-            "out vec4 FragColor;\n"
-            "uniform vec3 color;\n"
-            "void main() {\n"
-            "FragColor = vec4(color, 1.0);\n"
-            "}";
-
-        GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
-        glShaderSource(vertex_shader, 1, &vertex_shader_src, NULL);
-        glCompileShader(vertex_shader);
-
-        GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
-        glShaderSource(fragment_shader, 1, &fragment_shader_src, NULL);
-        glCompileShader(fragment_shader);
-
-        shader_prog_ID = glCreateProgram();
-        glAttachShader(shader_prog_ID, vertex_shader);
-        glAttachShader(shader_prog_ID, fragment_shader);
-        glLinkProgram(shader_prog_ID);
-
-        glDeleteShader(vertex_shader);
-        glDeleteShader(fragment_shader);
     }
     catch (const std::exception& e) {
         std::cerr << "Init failed: " << e.what() << std::endl;
@@ -78,44 +46,19 @@ bool App::init() {
     return true;
 }
 
+
 int App::run() {
-    GLfloat r, g, b, a;
-    r = g = b = a = 1.0f;
     std::cout << "Running...\n";
-    auto startTime = std::chrono::steady_clock::now();
-    auto lastTime = std::chrono::steady_clock::now();
-    int frameCount = 0;
-
     while (!glfwWindowShouldClose(window)) {
-        gl_check_error();
-        r = App::r; g = App::g; b = App::b; a = App::a;
-
-        auto currentTime = std::chrono::steady_clock::now();
-        std::chrono::duration<float> elapsed = currentTime - startTime;
-        float time = elapsed.count();
-        //r = (sin(time) + 1.0f) / 2.0f;
-
         glClear(GL_COLOR_BUFFER_BIT);
+        shader->activate();
+        shader->setUniform("color", glm::vec3(r, g, b));
 
-        glUseProgram(shader_prog_ID);
-        GLuint colorLocation = glGetUniformLocation(shader_prog_ID, "color");
-        glUniform3f(colorLocation, r, g, b);
-
-        glBindVertexArray(VAO_ID);
-        glDrawArrays(GL_TRIANGLES, 0, 3);
+        // ✨ Vykresli model ze souboru
+        model->draw();
 
         glfwSwapBuffers(window);
         glfwPollEvents();
-
-        frameCount++;
-        std::chrono::duration<double> fpsElapsed = currentTime - lastTime;
-        if (fpsElapsed.count() >= 1.0) {
-            double fps = frameCount / fpsElapsed.count();
-            std::string title = "OpenGL context - FPS: " + std::to_string(fps);
-            glfwSetWindowTitle(window, title.c_str());
-            frameCount = 0;
-            lastTime = currentTime;
-        }
     }
 
     glfwDestroyWindow(window);
@@ -125,13 +68,15 @@ int App::run() {
 
 
 App::~App() {
-    glDeleteProgram(shader_prog_ID);
-    glDeleteBuffers(1, &VBO_ID);
-    glDeleteVertexArrays(1, &VAO_ID);
+    delete shader;
+    delete model; // ✨ Uvolnit model!
     glfwDestroyWindow(window);
     glfwTerminate();
     std::cout << "Bye...\n";
 }
+
+
+
 
 // -------------------- CALLBACKY --------------------
 
@@ -155,12 +100,15 @@ void App::key_callback(GLFWwindow* window, int key, int scancode, int action, in
                 break;
             case GLFW_KEY_R:
                 app->r = (app->r == 1.0f) ? 0.0f : 1.0f;
+                std::cout << "Key R pressed" << std::endl;
                 break;
             case GLFW_KEY_G:
                 app->g = (app->g == 1.0f) ? 0.0f : 1.0f;
+                std::cout << "Key G pressed" << std::endl;
                 break;
             case GLFW_KEY_B:
                 app->b = (app->b == 1.0f) ? 0.0f : 1.0f;
+                std::cout << "Key B pressed" << std::endl;
                 break;
             default:
                 break;

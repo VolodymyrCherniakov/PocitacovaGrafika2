@@ -30,6 +30,11 @@
 #include "gl_err_callback.h"            // Added for GL debug output
 #include "glerror.h"
 #include "assets.hpp"
+#include "ShaderProgram.hpp"
+#include "Model.hpp" 
+#include <sstream> 
+#include <fstream>
+
 
 class App {
 public:
@@ -37,24 +42,24 @@ public:
     bool init(void);
     int run(void);
     ~App();
+    Model* model;
 
 private:
     GLFWwindow* window;
     static bool vsync_on;
 
-    GLuint shader_prog_ID{ 0 };
+    ShaderProgram* shader;
     GLuint VBO_ID{ 0 };
     GLuint VAO_ID{ 0 };
 
     GLfloat r{ 1.0f }, g{ 0.0f }, b{ 0.0f }, a{ 1.0f };
 
-    std::vector<vertex> triangle_vertices =
+    /*std::vector<Vertex> triangle_vertices =
     {
         {{0.0f,  0.5f,  0.0f}},
         {{0.5f, -0.5f,  0.0f}},
         {{-0.5f, -0.5f,  0.0f}}
-    };
-
+    };*/
     static void error_callback(int error, const char* description);
     static void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
     static void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);

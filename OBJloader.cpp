@@ -1,91 +1,99 @@
-#include <cstdio>
-#include <cstring>
+﻿#include <iostream>
+#include <fstream>
 #include <string>
-#include <GL/glew.h>
+#include <sstream>
+#include <vector>
 #include <glm/glm.hpp>
-
 #include "OBJloader.hpp"
 
-#define MAX_LINE_SIZE 255
+bool loadOBJ(
+    const std::string& path,
+    std::vector<glm::vec3>& out_vertices,
+    std::vector<glm::vec2>& out_uvs,
+    std::vector<glm::vec3>& out_normals
+) {
+    std::cout << "Loading OBJ file: " << path << std::endl;
 
-bool loadOBJ(const char* path, std::vector<glm::vec3>& out_vertices, std::vector<glm::vec2>& out_uvs, std::vector<glm::vec3>& out_normals)
-{
+    // Vy�i�t�n� v�stupn�ch vektor�
+    out_vertices.clear();
+    out_uvs.clear();
+    out_normals.clear();
+
+    // Do�asn� vektory pro na��t�n�
     std::vector<unsigned int> vertexIndices, uvIndices, normalIndices;
     std::vector<glm::vec3> temp_vertices;
     std::vector<glm::vec2> temp_uvs;
     std::vector<glm::vec3> temp_normals;
 
-    out_vertices.clear();
-    out_uvs.clear();
-    out_normals.clear();
-
-    FILE* file;
-    fopen_s(&file, path, "r");
-    if (file == nullptr) {
-        printf("Impossible to open the file!\n");
+    // Otev�en� souboru
+    std::ifstream file(path);
+    if (!file.is_open()) {
+        std::cerr << "Impossible to open the file: " << path << std::endl;
         return false;
     }
 
-    while (true) {
-        char lineHeader[MAX_LINE_SIZE];
-        int res = fscanf_s(file, "%s", lineHeader, MAX_LINE_SIZE);
-        if (res == EOF)
-            break;
+    // Na��t�n� souboru po ��dc�ch
+    std::string line;
+    while (std::getline(file, line)) {
+        std::istringstream iss(line);
+        std::string prefix;
+        iss >> prefix;
 
-        if (strcmp(lineHeader, "v") == 0) {
+        if (prefix == "v") {
+            // Vrchol
             glm::vec3 vertex;
-            fscanf_s(file, "%f %f %f\n", &vertex.x, &vertex.y, &vertex.z);
+            iss >> vertex.x >> vertex.y >> vertex.z;
             temp_vertices.push_back(vertex);
         }
-        else if (strcmp(lineHeader, "vt") == 0) {
+        else if (prefix == "vt") {
+            // Texturovac� koordin�ty
             glm::vec2 uv;
-            fscanf_s(file, "%f %f\n", &uv.y, &uv.x);
+            iss >> uv.x >> uv.y;
             temp_uvs.push_back(uv);
         }
-        else if (strcmp(lineHeader, "vn") == 0) {
+        else if (prefix == "vn") {
+            // Norm�la
             glm::vec3 normal;
-            fscanf_s(file, "%f %f %f\n", &normal.x, &normal.y, &normal.z);
+            iss >> normal.x >> normal.y >> normal.z;
             temp_normals.push_back(normal);
         }
-        else if (strcmp(lineHeader, "f") == 0) {
+        else if (prefix == "f") {
+            // Plo�ka (troj�heln�k)
             unsigned int vertexIndex[3], uvIndex[3], normalIndex[3];
-            int matches = fscanf_s(file, "%d/%d/%d %d/%d/%d %d/%d/%d\n",
-                &vertexIndex[0], &uvIndex[0], &normalIndex[0],
-                &vertexIndex[1], &uvIndex[1], &normalIndex[1],
-                &vertexIndex[2], &uvIndex[2], &normalIndex[2]);
-            if (matches != 9) {
-                printf("File can't be read by simple parser :( Try exporting with other options\n");
-                return false;
+            char slash;
+
+            // Parsov�n� form�tu "f v1/vt1/vn1 v2/vt2/vn2 v3/vt3/vn3"
+            for (int i = 0; i < 3; i++) {
+                iss >> vertexIndex[i] >> slash >> uvIndex[i] >> slash >> normalIndex[i];
+
+                // Konverze z 1-based na 0-based indexov�n�
+                vertexIndices.push_back(vertexIndex[i] - 1);
+                uvIndices.push_back(uvIndex[i] - 1);
+                normalIndices.push_back(normalIndex[i] - 1);
             }
-            vertexIndices.push_back(vertexIndex[0]);
-            vertexIndices.push_back(vertexIndex[1]);
-            vertexIndices.push_back(vertexIndex[2]);
-            uvIndices.push_back(uvIndex[0]);
-            uvIndices.push_back(uvIndex[1]);
-            uvIndices.push_back(uvIndex[2]);
-            normalIndices.push_back(normalIndex[0]);
-            normalIndices.push_back(normalIndex[1]);
-            normalIndices.push_back(normalIndex[2]);
         }
+        // Ignorujeme ostatn� typy ��dk� (koment��e, n�zvy skupin atd.)
     }
 
-    // Unroll indices to direct vertex specification
+    // Zpracov�n� indexovan�ch dat do line�rn�ho pole
     for (unsigned int i = 0; i < vertexIndices.size(); i++) {
         unsigned int vertexIndex = vertexIndices[i];
-        glm::vec3 vertex = temp_vertices[vertexIndex - 1];
-        out_vertices.push_back(vertex);
-    }
-    for (unsigned int i = 0; i < uvIndices.size(); i++) {
         unsigned int uvIndex = uvIndices[i];
-        glm::vec2 uv = temp_uvs[uvIndex - 1];
-        out_uvs.push_back(uv);
-    }
-    for (unsigned int i = 0; i < normalIndices.size(); i++) {
         unsigned int normalIndex = normalIndices[i];
-        glm::vec3 normal = temp_normals[normalIndex - 1];
-        out_normals.push_back(normal);
+
+        // Kontrola platnosti index�
+        if (vertexIndex >= temp_vertices.size() ||
+            uvIndex >= temp_uvs.size() ||
+            normalIndex >= temp_normals.size()) {
+            std::cerr << "Invalid index in OBJ file: " << path << std::endl;
+            return false;
+        }
+
+        out_vertices.push_back(temp_vertices[vertexIndex]);
+        out_uvs.push_back(temp_uvs[uvIndex]);
+        out_normals.push_back(temp_normals[normalIndex]);
     }
 
-    fclose(file);
+    std::cout << "OBJ loaded successfully: " << out_vertices.size() << " vertices" << std::endl;
     return true;
 }

@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -71,9 +71,9 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <ExecutablePath>$(OPENCV_DIR)\x64\vc16\bin;$(CommonExecutablePath);$(VC_ExecutablePath_x64)</ExecutablePath>
-    <IncludePath>$(OPENCV_DIR)\include;$(WindowsSDK_IncludePath);$(VC_IncludePath)</IncludePath>
-    <LibraryPath>$(WindowsSDK_LibraryPath_x64);$(VC_LibraryPath_x64);$(OPENCV_DIR)\x64\vc16\bin;$(OPENCV_DIR)\x64\vc16\lib</LibraryPath>
+    <ExecutablePath>$(OPENCV_DIR)\x64\vc16\bin</ExecutablePath>
+    <IncludePath>$(OPENCV_DIR)\include</IncludePath>
+    <LibraryPath>$(OPENCV_DIR)\x64\vc16\lib</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ExecutablePath>$C:\New folder\opencv\build\x64\vc16\bin;$(CommonExecutablePath);$(VC_ExecutablePath_x64)</ExecutablePath>
@@ -124,7 +124,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>opencv_world480d.lib;$(CoreLibraryDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>opencv_world480d.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -142,6 +142,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>opencv_world480.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -149,21 +150,54 @@
     <ClCompile Include="getinfo.cpp" />
     <ClCompile Include="glerror.cpp" />
     <ClCompile Include="gl_err_callback.cpp" />
+    <ClCompile Include="Mesh.cpp" />
+    <ClCompile Include="Model.cpp" />
+    <ClCompile Include="OBJloader.cpp" />
     <ClCompile Include="PocitacovaGrafika2.cpp" />
+    <ClCompile Include="ShaderProgram.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="app_settings.json" />
+    <None Include="resources\shaders\basic.frag" />
+    <None Include="resources\shaders\basic.vert" />
+    <None Include="resources\shaders\lamp.frag" />
+    <None Include="resources\shaders\lamp.vert" />
+    <None Include="resources\shaders\lighting.frag" />
+    <None Include="resources\shaders\lighting.vert" />
+    <None Include="resources\shaders\tex.frag" />
+    <None Include="resources\shaders\tex.vert" />
+    <None Include="shader.frag" />
+    <None Include="shader.vert" />
     <None Include="vcpkg.json" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="app.hpp" />
     <ClInclude Include="assets.hpp" />
+    <ClInclude Include="camera.hpp" />
     <ClInclude Include="getinfo.hpp" />
     <ClInclude Include="glerror.h" />
     <ClInclude Include="gl_err_callback.h" />
+    <ClInclude Include="Mesh.hpp" />
+    <ClInclude Include="Model.hpp" />
+    <ClInclude Include="OBJloader.hpp" />
+    <ClInclude Include="ShaderProgram.hpp" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="resources\lightbulb.jpg" />
+    <Image Include="resources\textures\box.png" />
+    <Image Include="resources\textures\ceiling.png" />
+    <Image Include="resources\textures\crate.png" />
+    <Image Include="resources\textures\floor.png" />
+    <Image Include="resources\textures\fog.png" />
+    <Image Include="resources\textures\glass.png" />
+    <Image Include="resources\textures\krabice.jpg" />
+    <Image Include="resources\textures\kralik.jpg" />
+    <Image Include="resources\textures\target.png" />
+    <Image Include="resources\textures\tex_256.png" />
+    <Image Include="resources\textures\wall.png" />
+    <Image Include="resources\textures\wall_bot.png" />
+    <Image Include="resources\textures\wall_top.png" />
+    <Image Include="resources\textures\water.png" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

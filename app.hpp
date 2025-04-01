@@ -1,65 +1,83 @@
-#pragma once
-
-// OpenCV (does not depend on GL)
-//#include <opencv2\opencv.hpp>
-
-// include anywhere, in any order
-#include <iostream>
-#include <chrono>
-#include <stack>
-#include <random>
-#include <vector>
-
-// OpenGL Extension Wrangler: allow all multiplatform GL functions
-#include <GL/glew.h> 
-// WGLEW = Windows GL Extension Wrangler (change for different platform) 
-// platform specific functions (in this case Windows)
-#include <GL/wglew.h> 
-#include <GL/gl.h>
-
-// GLFW toolkit
-// Uses GL calls to open GL context, i.e. GLEW __MUST__ be first.
+﻿#pragma once
+#include <opencv2/opencv.hpp>
+#include <GL/glew.h>
 #include <GLFW/glfw3.h>
-
-// OpenGL math (and other additional GL libraries, at the end)
 #include <glm/glm.hpp>
-#include <glm/gtc/type_ptr.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <vector>
+#include <string>
+#include <filesystem>
+#include <nlohmann/json.hpp>
 
-// User includes
-#include "getinfo.hpp"
-#include "gl_err_callback.h"            // Added for GL debug output
-#include "glerror.h"
 #include "assets.hpp"
+#include "ShaderProgram.hpp"
+#include "Model.hpp"
+#include "Camera.hpp"
+
+using json = nlohmann::json;
 
 class App {
 public:
     App();
-    bool init(void);
-    int run(void);
     ~App();
+    bool init(GLFWwindow* window);
+    void init_assets();
+    bool run();
+
+    // Texture loading
+    GLuint textureInit(const std::filesystem::path& filepath);
+
+    // Callback methods
+    static void fbsize_callback(GLFWwindow* window, int width, int height);
+    static void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
+    static void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
+    static void cursor_position_callback(GLFWwindow* window, double xpos, double ypos);
+    static void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
 
 private:
-    GLFWwindow* window;
-    static bool vsync_on;
+    // Shader and model data
+    ShaderProgram shader;
+    Model* triangle{ nullptr };
+    GLuint shaderProgram;
+    GLuint VAO{ 0 }, VBO{ 0 }; // For the simple triangle
 
-    GLuint shader_prog_ID{ 0 };
-    GLuint VBO_ID{ 0 };
-    GLuint VAO_ID{ 0 };
+    // Maze data
+    cv::Mat maze_map;
+    std::vector<Model*> maze_walls;
+    std::vector<GLuint> wall_textures;
 
-    GLfloat r{ 1.0f }, g{ 0.0f }, b{ 0.0f }, a{ 1.0f };
+    // Transparent bunnies (Task 1)
+    std::vector<Model*> transparent_bunnies;
+    void createTransparentBunnies();
 
-    std::vector<vertex> triangle_vertices =
-    {
-        {{0.0f,  0.5f,  0.0f}},
-        {{0.5f, -0.5f,  0.0f}},
-        {{-0.5f, -0.5f,  0.0f}}
-    };
+    // Maze generation methods
+    void genLabyrinth(cv::Mat& map);
+    uchar getmap(cv::Mat& map, int x, int y);
+    void createMazeModel();
 
-    static void error_callback(int error, const char* description);
-    static void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
-    static void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
-    static void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
-    static void cursor_position_callback(GLFWwindow* window, double xpos, double ypos);
+    // Window and projection
+    GLFWwindow* window{ nullptr };
+    int width{ 800 }, height{ 600 };
+    float fov{ 60.0f };
+    const float DEFAULT_FOV = 60.0f;
+    glm::mat4 projection_matrix{ glm::identity<glm::mat4>() };
 
-    //float camera_x = 0.0f, camera_y = 0.0f; // Pro WASD pohyb
+    // Camera
+    Camera camera{ glm::vec3(0.0f, 0.0f, 3.0f) };
+    double lastX{ 400.0 }, lastY{ 300.0 };
+    bool firstMouse{ true };
+
+    // Triangle color
+    float r{ 1.0f }, g{ 0.5f }, b{ 0.2f };
+
+    // Utility methods
+    void update_projection_matrix();
+    GLuint gen_tex(cv::Mat& image);
+    GLuint compileShader(GLenum type, const char* source);
+    void init_triangle();
 };
+
+// Configuration loading and validation
+void create_default_config();
+json load_config();
+bool validate_antialiasing_settings(const json& config, bool& antialiasing_enabled, int& samples);

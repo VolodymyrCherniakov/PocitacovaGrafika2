@@ -1,91 +1,108 @@
-#include <cstdio>
-#include <cstring>
-#include <string>
-#include <GL/glew.h>
-#include <glm/glm.hpp>
+﻿#include "OBJloader.hpp"
+#include <algorithm>
 
-#include "OBJloader.hpp"
-
-#define MAX_LINE_SIZE 255
-
-bool loadOBJ(const char* path, std::vector<glm::vec3>& out_vertices, std::vector<glm::vec2>& out_uvs, std::vector<glm::vec3>& out_normals)
-{
-    std::vector<unsigned int> vertexIndices, uvIndices, normalIndices;
-    std::vector<glm::vec3> temp_vertices;
-    std::vector<glm::vec2> temp_uvs;
-    std::vector<glm::vec3> temp_normals;
+bool loadOBJ(
+    const std::string& path,
+    std::vector<glm::vec3>& out_vertices,
+    std::vector<glm::vec2>& out_uvs,
+    std::vector<glm::vec3>& out_normals
+) {
+    std::cout << "Loading OBJ file: " << path << std::endl;
 
     out_vertices.clear();
     out_uvs.clear();
     out_normals.clear();
 
-    FILE* file;
-    fopen_s(&file, path, "r");
-    if (file == nullptr) {
-        printf("Impossible to open the file!\n");
+    std::vector<unsigned int> vertexIndices, uvIndices, normalIndices;
+    std::vector<glm::vec3> temp_vertices;
+    std::vector<glm::vec2> temp_uvs;
+    std::vector<glm::vec3> temp_normals;
+
+    std::ifstream file(path);
+    if (!file.is_open()) {
+        std::cerr << "Impossible to open the file: " << path << std::endl;
         return false;
     }
 
-    while (true) {
-        char lineHeader[MAX_LINE_SIZE];
-        int res = fscanf_s(file, "%s", lineHeader, MAX_LINE_SIZE);
-        if (res == EOF)
-            break;
+    std::string line;
+    while (std::getline(file, line)) {
+        std::istringstream iss(line);
+        std::string prefix;
+        iss >> prefix;
 
-        if (strcmp(lineHeader, "v") == 0) {
+        if (prefix == "v") {
             glm::vec3 vertex;
-            fscanf_s(file, "%f %f %f\n", &vertex.x, &vertex.y, &vertex.z);
+            iss >> vertex.x >> vertex.y >> vertex.z;
             temp_vertices.push_back(vertex);
         }
-        else if (strcmp(lineHeader, "vt") == 0) {
+        else if (prefix == "vt") {
             glm::vec2 uv;
-            fscanf_s(file, "%f %f\n", &uv.y, &uv.x);
+            iss >> uv.x >> uv.y;
+            uv.y = 1.0f - uv.y; 
             temp_uvs.push_back(uv);
         }
-        else if (strcmp(lineHeader, "vn") == 0) {
+        else if (prefix == "vn") {
             glm::vec3 normal;
-            fscanf_s(file, "%f %f %f\n", &normal.x, &normal.y, &normal.z);
+            iss >> normal.x >> normal.y >> normal.z;
             temp_normals.push_back(normal);
         }
-        else if (strcmp(lineHeader, "f") == 0) {
-            unsigned int vertexIndex[3], uvIndex[3], normalIndex[3];
-            int matches = fscanf_s(file, "%d/%d/%d %d/%d/%d %d/%d/%d\n",
-                &vertexIndex[0], &uvIndex[0], &normalIndex[0],
-                &vertexIndex[1], &uvIndex[1], &normalIndex[1],
-                &vertexIndex[2], &uvIndex[2], &normalIndex[2]);
-            if (matches != 9) {
-                printf("File can't be read by simple parser :( Try exporting with other options\n");
-                return false;
+        else if (prefix == "f") {
+            std::vector<unsigned int> v_idx, uv_idx, n_idx;
+            std::string token;
+            while (iss >> token) {
+                std::replace(token.begin(), token.end(), '/', ' ');
+                std::istringstream vss(token);
+                unsigned int vi = 0, uvi = 0, ni = 0;
+                if (!(vss >> vi >> uvi >> ni)) {
+                    std::cerr << "Invalid face format in OBJ file: " << path << std::endl;
+                    file.close();
+                    return false;
+                }
+                v_idx.push_back(vi - 1);
+                uv_idx.push_back(uvi - 1);
+                n_idx.push_back(ni - 1);
             }
-            vertexIndices.push_back(vertexIndex[0]);
-            vertexIndices.push_back(vertexIndex[1]);
-            vertexIndices.push_back(vertexIndex[2]);
-            uvIndices.push_back(uvIndex[0]);
-            uvIndices.push_back(uvIndex[1]);
-            uvIndices.push_back(uvIndex[2]);
-            normalIndices.push_back(normalIndex[0]);
-            normalIndices.push_back(normalIndex[1]);
-            normalIndices.push_back(normalIndex[2]);
+
+            if (v_idx.size() < 3) {
+                std::cerr << "Face with less than 3 vertices in OBJ file: " << path << std::endl;
+                continue;
+            }
+
+            for (size_t i = 1; i + 1 < v_idx.size(); ++i) {
+                vertexIndices.push_back(v_idx[0]);
+                vertexIndices.push_back(v_idx[i]);
+                vertexIndices.push_back(v_idx[i + 1]);
+
+                uvIndices.push_back(uv_idx[0]);
+                uvIndices.push_back(uv_idx[i]);
+                uvIndices.push_back(uv_idx[i + 1]);
+
+                normalIndices.push_back(n_idx[0]);
+                normalIndices.push_back(n_idx[i]);
+                normalIndices.push_back(n_idx[i + 1]);
+            }
         }
     }
+    file.close(); // Explicitní zavření souboru
 
-    // Unroll indices to direct vertex specification
-    for (unsigned int i = 0; i < vertexIndices.size(); i++) {
+    // Převod indexů na výstupní vektory
+    for (size_t i = 0; i < vertexIndices.size(); i++) {
         unsigned int vertexIndex = vertexIndices[i];
-        glm::vec3 vertex = temp_vertices[vertexIndex - 1];
-        out_vertices.push_back(vertex);
-    }
-    for (unsigned int i = 0; i < uvIndices.size(); i++) {
         unsigned int uvIndex = uvIndices[i];
-        glm::vec2 uv = temp_uvs[uvIndex - 1];
-        out_uvs.push_back(uv);
-    }
-    for (unsigned int i = 0; i < normalIndices.size(); i++) {
         unsigned int normalIndex = normalIndices[i];
-        glm::vec3 normal = temp_normals[normalIndex - 1];
-        out_normals.push_back(normal);
+
+        if (vertexIndex >= temp_vertices.size() ||
+            uvIndex >= temp_uvs.size() ||
+            normalIndex >= temp_normals.size()) {
+            std::cerr << "Invalid index in OBJ file: " << path << std::endl;
+            return false;
+        }
+
+        out_vertices.push_back(temp_vertices[vertexIndex]);
+        out_uvs.push_back(temp_uvs[uvIndex]);
+        out_normals.push_back(temp_normals[normalIndex]);
     }
 
-    fclose(file);
+    std::cout << "OBJ loaded successfully: " << out_vertices.size() << " vertices" << std::endl;
     return true;
 }

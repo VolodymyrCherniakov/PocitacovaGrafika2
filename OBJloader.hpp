@@ -1,15 +1,16 @@
 #pragma once
-#ifndef OBJLOADER_H
-#define OBJLOADER_H
 
+#include <string>
 #include <vector>
-#include <glm/fwd.hpp>
+#include <fstream>
+#include <sstream>
+#include <iostream>
+#include <glm/glm.hpp>
+#include "assets.hpp"
 
 bool loadOBJ(
-    const char* path,
-    std::vector<glm::vec3>& out_vertices,
-    std::vector<glm::vec2>& out_uvs,
+    const std::string& path, 
+    std::vector<glm::vec3>& out_vertices, 
+    std::vector<glm::vec2>& out_uvs, 
     std::vector<glm::vec3>& out_normals
-);
-
-#endif
+); 
